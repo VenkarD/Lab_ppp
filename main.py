@@ -1,172 +1,76 @@
-from PyQt5.QtGui import QIcon, QImage, QPainter, QPen, QBrush
-from PyQt5.QtCore import Qt, QPoint
-import sys
+from tkinter import *
+from tkinter import ttk
 
-from PyQt5.QtWidgets import QMainWindow, QAction, QApplication
-
-
-class Window(QMainWindow):
-    def __init__(self):
-        super().__init__()
+current = None
 
 
-        title = "Paint Application"
-        top = 400
-        left = 400
-        width = 800
-        height = 600
+def DrawGrid(drawing_area, line_distance):
+    for x in range(line_distance, 600, line_distance):
+        drawing_area.create_line(x, 0, x, 600, fill="#d3d3d3")
 
-        icon = "icons/pain.png"
-
-        self.setWindowTitle(title)
-        self.setGeometry(top, left, width, height)
-        self.setWindowIcon(QIcon(icon))
-
-        self.image = QImage(self.size(), QImage.Format_RGB32)
-        self.image.fill(Qt.white)
-
-        self.drawing = False
-        self.brushSize = 2
-        self.brushColor = Qt.black
-        self.lastPoint = QPoint()
-
-        mainMenu = self.menuBar()
-        fileMenu = mainMenu.addMenu("File")
-        brushSize = mainMenu.addMenu("Brush Size")
-        brushColor = mainMenu.addMenu("Brush Color")
-
-        saveAction = QAction(QIcon("icons/save.png"), "Save",self)
-        saveAction.setShortcut("Ctrl+S")
-        fileMenu.addAction(saveAction)
-        saveAction.triggered.connect(self.save)
-
-        clearAction = QAction(QIcon("icons/clear.png"), "Clear", self)
-        clearAction.setShortcut("Ctrl+C")
-        fileMenu.addAction(clearAction)
-        clearAction.triggered.connect(self.clear)
-
-        threepxAction = QAction( QIcon("icons/threepx.png"), "3px", self)
-        brushSize.addAction(threepxAction)
-        threepxAction.triggered.connect(self.threePixel)
-
-        fivepxAction = QAction(QIcon("icons/fivepx.png"), "5px", self)
-        brushSize.addAction(fivepxAction)
-        fivepxAction.triggered.connect(self.fivePixel)
-
-        sevenpxAction = QAction(QIcon("icons/sevenpx.png"),"7px", self)
-        brushSize.addAction(sevenpxAction)
-        sevenpxAction.triggered.connect(self.sevenPixel)
-
-        ninepxAction = QAction(QIcon("icons/ninepx.png"), "9px", self)
-        brushSize.addAction(ninepxAction)
-        ninepxAction.triggered.connect(self.ninePixel)
-
-        blackAction = QAction(QIcon("icons/black.png"), "Black", self)
-        blackAction.setShortcut("Ctrl+B")
-        brushColor.addAction(blackAction)
-        blackAction.triggered.connect(self.blackColor)
+    for y in range(line_distance, 600, line_distance):
+        drawing_area.create_line(0, y, 600, y, fill="#d3d3d3")
 
 
-        whitekAction = QAction(QIcon("icons/white.png"), "White", self)
-        whitekAction.setShortcut("Ctrl+W")
-        brushColor.addAction(whitekAction)
-        whitekAction.triggered.connect(self.whiteColor)
+def main():
+    root = Tk()
+
+    root.title("Python PPP")
+    tab_control = ttk.Notebook(root)
+
+    tab1 = ttk.Frame(tab_control)
+    tab2 = ttk.Frame(tab_control)
+    tab3 = ttk.Frame(tab_control)
+    tab_control.add(tab1, text='Файл')
+    tab_control.add(tab2, text='Эскиз')
+    tab_control.add(tab3, text='3D-модель')
+    tab_control.pack(expand=1, fill='both')
+
+    drawing_area = Canvas(root, width=600, height=600, bg='white')
+    drawing_area.pack()
+    # DrawGrid(drawing_area, 10)
+    drawing_area.bind("<ButtonPress-3>", reset)
+    drawing_area.bind("<Motion>", motion)
+    drawing_area.bind("<ButtonPress-1>", Mousedown)
+
+    root.mainloop()
 
 
-        redAction = QAction(QIcon("icons/red.png"), "Red", self)
-        redAction.setShortcut("Ctrl+R")
-        brushColor.addAction(redAction)
-        redAction.triggered.connect(self.redColor)
-
-        greenAction = QAction(QIcon("icons/green.png"), "Green", self)
-        greenAction.setShortcut("Ctrl+G")
-        brushColor.addAction(greenAction)
-        greenAction.triggered.connect(self.greenColor)
-
-        yellowAction = QAction(QIcon("icons/yellow.png"), "Yellow", self)
-        yellowAction.setShortcut("Ctrl+Y")
-        brushColor.addAction(yellowAction)
-        yellowAction.triggered.connect(self.yellowColor)
+def reset(event):
+    global current
+    current = None
 
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drawing = True
-            self.lastPoint = event.pos()
-            #print(self.lastPoint)
+def Mousedown(event):
+    global current
+
+    event.widget.focus_set()  # so escape key will work
+
+    if current is None:
+        # the new line starts where the user clicked
+        x0 = event.x
+        y0 = event.y
+
+    else:
+        # the new line starts at the end of the previously
+        # drawn line
+        coords = event.widget.coords(current)
+        x0 = coords[2]
+        y0 = coords[3]
+
+    # create the new line
+    current = event.widget.create_line(x0, y0, event.x, event.y)
 
 
-    def mouseMoveEvent(self, event):
-        if(event.buttons() & Qt.LeftButton) & self.drawing:
-            painter = QPainter(self.image)
-            painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            painter.drawLine(self.lastPoint, event.pos())
-            self.lastPoint = event.pos()
-            self.update()
+def motion(event):
+    if current:
+        # modify the current line by changing the end coordinates
+        # to be the current mouse position
+        coords = event.widget.coords(current)
+        coords[2] = event.x
+        coords[3] = event.y
+
+        event.widget.coords(current, *coords)
 
 
-
-    def mouseReleaseEvent(self, event):
-
-        if event.button() == Qt.LeftButton:
-            self.drawing = False
-
-
-    def paintEvent(self, event):
-        canvasPainter  = QPainter(self)
-        canvasPainter.drawImage(self.rect(),self.image, self.image.rect() )
-
-
-
-
-
-    def save(self):
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG(*.png);;JPEG(*.jpg *.jpeg);;All Files(*.*) ")
-
-        if filePath == "":
-            return
-        self.image.save(filePath)
-
-
-
-    def clear(self):
-        self.image.fill(Qt.white)
-        self.update()
-
-
-    def threePixel(self):
-        self.brushSize = 3
-
-    def fivePixel(self):
-        self.brushSize = 5
-
-    def sevenPixel(self):
-        self.brushSize = 7
-
-    def ninePixel(self):
-        self.brushSize = 9
-
-
-    def blackColor(self):
-        self.brushColor = Qt.black
-
-    def whiteColor(self):
-        self.brushColor = Qt.white
-
-    def redColor(self):
-        self.brushColor = Qt.red
-
-    def greenColor(self):
-        self.brushColor = Qt.green
-
-    def yellowColor(self):
-        self.brushColor = Qt.yellow
-
-
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = Window()
-    window.show()
-    app.exec()
+main()
